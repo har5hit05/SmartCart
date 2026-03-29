@@ -7,9 +7,26 @@ import { pool } from '../config/database';
 
 // BullMQ uses ioredis internally — support REDIS_URL or host:port
 const redisUrl = process.env.REDIS_URL;
-const connection = redisUrl
-    ? { url: redisUrl }  // Cloud Redis (Upstash, etc.)
-    : { host: config.redis.host, port: config.redis.port }; // Local Redis
+let connection: any;
+if (redisUrl) {
+    // Parse Upstash/cloud Redis URL for ioredis compatibility
+    const url = new URL(redisUrl);
+    connection = {
+        host: url.hostname,
+        port: parseInt(url.port) || 6379,
+        password: url.password ? decodeURIComponent(url.password) : undefined,
+        username: url.username || undefined,
+        tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+    };
+} else {
+    connection = {
+        host: config.redis.host,
+        port: config.redis.port,
+        maxRetriesPerRequest: null,
+    };
+}
 
 // Queues
 export const embeddingQueue = new Queue('embeddings', { connection });
