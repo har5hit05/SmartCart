@@ -2,45 +2,130 @@
 
 A production-grade full-stack e-commerce platform with **AI-powered semantic search**, **RAG chatbot**, **real-time notifications**, **payment gateway integration**, and **comprehensive admin dashboard**. Built with modern technologies to demonstrate scalable architecture and industry best practices.
 
+### [Live Demo](https://smartcart-rouge.vercel.app) | [API Docs](https://smartcart-api-ecdk.onrender.com/api/docs)
+
+> **Note**: Backend is on Render free tier — first request may take ~30s (cold start). After that, it's instant.
+
 ![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Socket.io](https://img.shields.io/badge/Socket.io-4-010101?logo=socket.io&logoColor=white)
+![Razorpay](https://img.shields.io/badge/Razorpay-Integration-0C2451?logo=razorpay&logoColor=white)
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         CLIENT (React + Vite)                       │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
+│   │ Products │  │   Cart   │  │ Checkout │  │  Admin Dashboard │  │
+│   │  Search  │  │ Wishlist │  │ Payment  │  │  Analytics/CRUD  │  │
+│   └────┬─────┘  └────┬─────┘  └────┬─────┘  └────────┬─────────┘  │
+│        │              │              │                  │            │
+│   ┌────┴──────────────┴──────────────┴──────────────────┴────────┐  │
+│   │          Axios (JWT interceptors + auto token refresh)       │  │
+│   │          Socket.io Client (real-time notifications)          │  │
+│   └──────────────────────────┬───────────────────────────────────┘  │
+│                              │                                      │
+│   Vercel (CDN + Edge)        │  HTTPS                               │
+└──────────────────────────────┼──────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    API SERVER (Node.js + Express 5)                   │
+│                                                                      │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────┐  ┌───────────┐  │
+│  │   Helmet    │  │ Rate Limiter │  │    CORS    │  │    XSS    │  │
+│  │  Security   │  │  (per-route) │  │ Whitelist  │  │ Sanitize  │  │
+│  └──────┬──────┘  └──────┬───────┘  └─────┬──────┘  └─────┬─────┘  │
+│         └────────────────┴─────────────────┴───────────────┘        │
+│                                    │                                 │
+│  ┌─────────────────────────────────┴──────────────────────────────┐  │
+│  │                      ROUTE HANDLERS                            │  │
+│  │  Auth · Products · Cart · Orders · Payments · Reviews          │  │
+│  │  Wishlist · Coupons · AI · StockAlerts · Notifications · Admin │  │
+│  └───────────────────────────┬────────────────────────────────────┘  │
+│                              │                                       │
+│  ┌───────────────────────────┴────────────────────────────────────┐  │
+│  │                     SERVICE LAYER                              │  │
+│  │                                                                │  │
+│  │  ┌──────────┐  ┌────────────┐  ┌───────────┐  ┌───────────┐  │  │
+│  │  │ Payment  │  │    AI      │  │  PubSub   │  │  Invoice   │  │  │
+│  │  │ Strategy │  │ (OpenAI +  │  │  (Redis   │  │  (PDFKit)  │  │  │
+│  │  │ Pattern  │  │  pgvector) │  │  Pub/Sub) │  │           │  │  │
+│  │  │          │  │            │  │           │  │           │  │  │
+│  │  │ Razorpay │  │ Embeddings │  │ 11 Event  │  │ Branded   │  │  │
+│  │  │ Stripe   │  │ RAG Chat   │  │ Channels  │  │ PDF with  │  │  │
+│  │  │ COD      │  │ Smart      │  │ Real-time │  │ GST calc  │  │  │
+│  │  │          │  │ Fallback   │  │ Socket.io │  │           │  │  │
+│  │  └──────────┘  └────────────┘  └───────────┘  └───────────┘  │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  Render (Web Service)                                                │
+└────────┬──────────────────────┬──────────────────────┬───────────────┘
+         │                      │                      │
+         ▼                      ▼                      ▼
+┌─────────────────┐  ┌──────────────────┐  ┌───────────────────────┐
+│   PostgreSQL    │  │      Redis       │  │       BullMQ          │
+│   (Supabase)    │  │    (Upstash)     │  │  (Background Jobs)    │
+│                 │  │                  │  │                       │
+│ • Users/Auth    │  │ • Cache (5m TTL) │  │ • Embedding generation│
+│ • Products      │  │ • Pub/Sub events │  │   (concurrency: 2,    │
+│ • Orders/Cart   │  │ • Session store  │  │    rate limit: 5/sec) │
+│ • Reviews       │  │ • Pattern        │  │ • Token cleanup       │
+│ • pgvector      │  │   invalidation   │  │   (cron: every 6hr)   │
+│   (embeddings)  │  │                  │  │ • Payment cleanup     │
+│ • Full-text     │  │                  │  │   (expired payments)  │
+│   search (GIN)  │  │                  │  │                       │
+└─────────────────┘  └──────────────────┘  └───────────────────────┘
+```
 
 ---
 
 ## Tech Stack
 
 ### Backend
-- **Node.js + Express 5** — REST API with TypeScript (strict mode)
-- **PostgreSQL 15 + pgvector** — Relational DB with vector similarity search
-- **Redis 7** — Caching layer + Pub/Sub for real-time events
-- **BullMQ** — Background job queue (embedding generation, token/payment cleanup)
-- **OpenAI API** — Embeddings (text-embedding-3-small) + GPT-4o-mini RAG chatbot
-- **Socket.io** — Real-time WebSocket for notifications and live updates
-- **Razorpay + Stripe** — Payment gateway with Strategy Pattern (UPI, Cards, Wallets, COD)
-- **PDFKit** — Invoice PDF generation with branded template
-- **JWT** — Access + Refresh token authentication with role-based access
-- **Zod** — Request validation schemas
-- **Helmet.js** — Security headers, CORS hardening, XSS sanitization
-- **Swagger/OpenAPI** — Auto-generated API documentation
+| Technology | Purpose |
+|-----------|---------|
+| **Node.js + Express 5** | REST API with TypeScript (strict mode) |
+| **PostgreSQL 16 + pgvector** | Relational DB with vector similarity search |
+| **Redis 7** | Caching layer + Pub/Sub for real-time events |
+| **BullMQ** | Background job queue (embedding generation, token/payment cleanup) |
+| **OpenAI API** | Embeddings (text-embedding-3-small) + GPT-4o-mini RAG chatbot |
+| **Socket.io** | Real-time WebSocket for notifications and live updates |
+| **Razorpay + Stripe** | Payment gateway with Strategy Pattern (UPI, Cards, Wallets, COD) |
+| **PDFKit** | Invoice PDF generation with branded template |
+| **JWT** | Access + Refresh token authentication with role-based access |
+| **Zod** | Request validation schemas |
+| **Helmet.js** | Security headers, CORS hardening, XSS sanitization |
+| **Swagger/OpenAPI** | Auto-generated API documentation |
 
 ### Frontend
-- **React 19 + TypeScript** — SPA with Vite
-- **TailwindCSS v4** — Utility-first styling with dark mode support
-- **React Router v7** — Client-side routing with protected routes
-- **Recharts** — Admin dashboard analytics charts
-- **Socket.io Client** — Real-time notifications and live activity feed
-- **Axios** — HTTP client with interceptors (auto token refresh)
-- **React.lazy + Suspense** — Code splitting for optimized loading
-- **Error Boundaries** — Graceful error handling in UI
+| Technology | Purpose |
+|-----------|---------|
+| **React 19 + TypeScript** | SPA with Vite |
+| **TailwindCSS v4** | Utility-first styling with dark mode support |
+| **React Router v7** | Client-side routing with protected routes |
+| **Recharts** | Admin dashboard analytics charts |
+| **Socket.io Client** | Real-time notifications and live activity feed |
+| **Axios** | HTTP client with interceptors (auto token refresh) |
+| **React.lazy + Suspense** | Code splitting for optimized loading |
+| **Error Boundaries** | Graceful error handling in UI |
 
 ### Infrastructure
-- **Docker Compose** — PostgreSQL, Redis, pgAdmin
-- **Jest + Supertest** — Integration tests
-- **Morgan + Correlation IDs** — Structured HTTP logging
+| Technology | Purpose |
+|-----------|---------|
+| **Docker Compose** | Local dev: PostgreSQL, Redis, pgAdmin |
+| **Supabase** | Production PostgreSQL (pgvector enabled) |
+| **Upstash** | Production serverless Redis |
+| **Vercel** | Frontend hosting with CDN |
+| **Render** | Backend API hosting |
+| **Jest + Supertest** | Integration + unit tests |
 
 ---
 
@@ -72,7 +157,7 @@ A production-grade full-stack e-commerce platform with **AI-powered semantic sea
 - **Product Recommendations** — "You might also like" using vector similarity
 - **Smart Cart Suggestions** — AI analyzes cart and suggests complementary products
 - **RAG Shopping Assistant** — Chatbot that understands your product catalog
-- **Graceful Fallbacks** — All AI features work without OpenAI API key (falls back to PostgreSQL full-text search + intelligent keyword matching)
+- **Graceful Fallbacks** — All AI features work without OpenAI API key (keyword extraction, stop-word removal, category/price intent detection)
 
 ### Real-Time (Redis Pub/Sub + Socket.io)
 - Instant order status notifications for customers
@@ -80,6 +165,7 @@ A production-grade full-stack e-commerce platform with **AI-powered semantic sea
 - Back-in-stock alerts (subscribe to out-of-stock products, get notified when restocked)
 - Notification bell with unread count and mark-as-read
 - Low stock warnings for admin
+- 11 event channels (order, payment, stock, product, user, review)
 
 ### Admin Dashboard
 - Revenue analytics with daily charts
@@ -105,7 +191,7 @@ A production-grade full-stack e-commerce platform with **AI-powered semantic sea
 
 ---
 
-## Architecture
+## Project Structure
 
 ```
 smartcart/
@@ -114,9 +200,15 @@ smartcart/
 │   │   ├── config/          # Database, Redis, Swagger, env config
 │   │   ├── controllers/     # Auth, Product, Cart, Order, AI, Admin, Review,
 │   │   │                    # Wishlist, Coupon, Payment, StockAlert, Notification
-│   │   ├── services/        # Business logic (AI, Cache, Invoice, Payment, PubSub,
-│   │   │                    # StockAlert, WebSocket, Review, Order)
-│   │   ├── models/          # Data access (PostgreSQL queries)
+│   │   ├── services/        # Business logic layer
+│   │   │   ├── ai.service.ts         # OpenAI embeddings, RAG chat, smart fallback
+│   │   │   ├── payment/              # Strategy Pattern (Razorpay, Stripe, COD)
+│   │   │   ├── pubsub.service.ts     # Redis Pub/Sub event system
+│   │   │   ├── cache.service.ts      # Redis caching with pattern invalidation
+│   │   │   ├── invoice.service.ts    # PDFKit branded invoice generation
+│   │   │   ├── websocket.service.ts  # Socket.io real-time delivery
+│   │   │   └── stockAlert.service.ts # Back-in-stock notification system
+│   │   ├── models/          # Data access layer (PostgreSQL queries)
 │   │   ├── routes/          # Express route definitions
 │   │   ├── middlewares/     # Auth, validation, rate limiting, sanitize, httpLogger
 │   │   ├── validations/    # Zod schemas
@@ -125,13 +217,14 @@ smartcart/
 │   │   ├── app.ts          # Express app (separated for testing)
 │   │   └── server.ts       # HTTP + WebSocket entry point
 │   ├── scripts/
-│   │   ├── migrations/     # SQL migrations (8 files)
-│   │   └── seed-products.sql  # 60 products across 8 categories
+│   │   ├── migrations/     # SQL migrations (9 files)
+│   │   └── seed-products.sql  # 49 products across 8 categories
 │   └── tests/
-│       └── integration/    # Supertest API tests
+│       ├── integration/    # Supertest API tests
+│       └── unit/           # Service/validation unit tests
 ├── frontend/
 │   ├── src/
-│   │   ├── api/            # Axios client with interceptors
+│   │   ├── api/            # Axios client with JWT interceptors
 │   │   ├── contexts/       # Auth, Cart, Theme (dark mode)
 │   │   ├── hooks/          # useDebounce, useRecentlyViewed
 │   │   ├── components/     # Navbar, Footer, ChatBot, ReviewSection,
@@ -156,7 +249,7 @@ smartcart/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/smartcart.git
+git clone https://github.com/har5hit05/smartcart.git
 cd smartcart
 
 # 2. Start databases
@@ -183,14 +276,14 @@ npm run dev             # Starts on http://localhost:5173
 ### Default Accounts
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@smartcart.com | admin123 |
-| Customer | harshit@smartcart.com | harshit123 |
+| Admin | admin@smartcart.com | Admin@123 |
 
 ### Enable AI Features (Optional)
 Add your OpenAI API key to `backend/.env`:
 ```
 OPENAI_API_KEY=sk-your-actual-key
 ```
+Without the key, the app uses intelligent keyword-based fallback search (PostgreSQL full-text search + stop-word removal + category/price intent detection).
 
 ### Enable Payment Gateway (Optional)
 Add Razorpay test keys to `backend/.env`:
@@ -198,12 +291,13 @@ Add Razorpay test keys to `backend/.env`:
 RAZORPAY_KEY_ID=rzp_test_xxxxx
 RAZORPAY_KEY_SECRET=xxxxx
 ```
+Without keys, only Cash on Delivery is available.
 
 ---
 
 ## API Documentation
 
-Visit **http://localhost:3000/api/docs** for interactive Swagger UI.
+Visit **[Live API Docs](https://smartcart-api-ecdk.onrender.com/api/docs)** or `http://localhost:3000/api/docs` for interactive Swagger UI.
 
 ### Key Endpoints
 
@@ -211,12 +305,12 @@ Visit **http://localhost:3000/api/docs** for interactive Swagger UI.
 |----------|--------|----------|-------------|
 | **Auth** | POST | `/api/auth/register` | Register user |
 | **Auth** | POST | `/api/auth/login` | Login (returns access + refresh token) |
+| **Auth** | POST | `/api/auth/refresh` | Refresh access token |
 | **Products** | GET | `/api/products` | List with filters, pagination, sorting |
 | **Products** | GET | `/api/products/search?q=` | Full-text search |
 | **Cart** | GET | `/api/cart` | Get cart with GST + shipping summary |
 | **Cart** | POST | `/api/cart` | Add to cart |
 | **Orders** | POST | `/api/orders` | Create order from cart |
-| **Orders** | GET | `/api/orders/:id` | Order details + status history |
 | **Orders** | GET | `/api/orders/:id/invoice` | Download invoice PDF |
 | **Payments** | POST | `/api/payments/initiate` | Start payment (Razorpay/Stripe/COD) |
 | **Payments** | POST | `/api/payments/verify` | Verify payment signature |
@@ -230,6 +324,7 @@ Visit **http://localhost:3000/api/docs** for interactive Swagger UI.
 | **Notifications** | GET | `/api/notifications` | Get user notifications |
 | **Admin** | GET | `/api/admin/analytics/dashboard` | Dashboard analytics |
 | **Admin** | PUT | `/api/admin/orders/:id/status` | Update order status |
+| **Health** | GET | `/health` | Service health (DB, Redis, PubSub, WebSocket) |
 
 ---
 
@@ -239,6 +334,7 @@ Visit **http://localhost:3000/api/docs** for interactive Swagger UI.
 cd backend
 npm test                    # Run all tests
 npm run test:integration    # Integration tests only
+npm run test:unit           # Unit tests only
 npm run test:coverage       # With coverage report
 ```
 
@@ -246,22 +342,40 @@ npm run test:coverage       # With coverage report
 
 ## Deployment
 
-### Cloud Services (Free Tier)
+This project is deployed using free-tier cloud services:
+
 | Service | Platform | Purpose |
 |---------|----------|---------|
-| Frontend | Vercel | React SPA hosting with CDN |
-| Backend | Render | Node.js API server |
-| Database | Neon | Managed PostgreSQL with pgvector |
-| Cache | Upstash | Serverless Redis |
+| Frontend | **Vercel** | React SPA hosting with global CDN |
+| Backend | **Render** | Node.js API server with auto-deploy |
+| Database | **Supabase** | Managed PostgreSQL 16 with pgvector |
+| Cache | **Upstash** | Serverless Redis with TLS |
 
-Set these environment variables on your deployment platform:
+### Environment Variables (Backend)
 ```
-DATABASE_URL=postgresql://...    # From Neon
-REDIS_URL=rediss://...           # From Upstash
-FRONTEND_URL=https://...         # Your Vercel URL
-JWT_SECRET=...                   # Generate a strong secret
-JWT_REFRESH_SECRET=...           # Generate a strong secret
+DATABASE_URL=postgresql://...         # Supabase connection string
+REDIS_URL=rediss://...                # Upstash Redis URL (TLS)
+FRONTEND_URL=https://...              # Vercel frontend URL
+JWT_SECRET=...                        # Strong random secret
+JWT_REFRESH_SECRET=...                # Strong random secret
+OPENAI_API_KEY=sk-...                 # Optional
+RAZORPAY_KEY_ID=rzp_test_...          # Optional
+RAZORPAY_KEY_SECRET=...               # Optional
 ```
+
+---
+
+## Design Decisions
+
+| Decision | Why |
+|----------|-----|
+| **Strategy Pattern for Payments** | Clean abstraction to add new payment providers without modifying existing code (Open/Closed Principle) |
+| **Redis Pub/Sub over direct Socket.io** | Decouples event producers from consumers; scales horizontally if needed |
+| **pgvector over external vector DB** | Keeps everything in one database; no extra service to manage |
+| **BullMQ over in-process** | Background jobs survive server restarts; built-in retry with exponential backoff |
+| **Graceful AI fallbacks** | App works fully without OpenAI key — keyword search, stop-word removal, intent detection |
+| **JWT Access + Refresh tokens** | Short-lived access tokens (15min) for security; refresh tokens for UX |
+| **Server-side payment calculation** | Prevents price tampering — client sends cart, server calculates total |
 
 ---
 
