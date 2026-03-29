@@ -1,0 +1,6 @@
+{
+  "name": "smartcart",
+  "version": "1.0.0",
+  "description": "AI-Powered E-Commerce Platform with semantic search, RAG chatbot, real-time notifications, and payment gateway",
+  "private": true
+}

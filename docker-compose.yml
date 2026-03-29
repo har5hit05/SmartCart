@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: smartcart-postgres
+    environment:
+      POSTGRES_USER: smartcart
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: smartcart
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartcart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartcart-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartcart-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@smartcart.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
